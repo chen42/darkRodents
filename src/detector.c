@@ -1135,7 +1135,7 @@ void test_detector_file(char *datacfg, char *cfgfile, char *weightfile, char *fi
             char buff3[256];
             char * imgName = buff2;
             char * saveName = buff3;
-            strncpy(saveName, outfile, 256);
+            //strncpy(saveName, outfile, 256);
             strncpy(imgName, input, 256);
             int imgName_len = strlen(imgName);
             //extract filename
