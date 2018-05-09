@@ -231,20 +231,20 @@ image **load_alphabet()
     return alphabets;
 }
 
-void draw_detections_v3(image im, detection *dets, int num, float thresh, char **names, image **alphabet, int classes)
+void draw_detections_v3(image im, detection *dets, int num, float thresh, char **names, image **alphabet, int classes, char *filename)
 {
 	int i, j;
-	// char video_name[200] = {0};
-	// strcat(video_name,filename);
-	// strcat(video_name,".txt");
+	char video_name[200] = {0};
+	strcat(video_name,filename);
+	strcat(video_name,".txt");
 
 	FILE *pFile;
-	if ((pFile=fopen("yolo_v3_detec.txt", "r"))==NULL){
-        pFile=fopen("yolo_v3_detec.txt", "a");
+	if ((pFile=fopen(video_name, "r"))==NULL){
+        pFile=fopen(video_name, "a");
         fprintf(pFile,"#object, left, right, top, bottom, prob\n");
     }
     else{
-    	pFile=fopen("yolo_v3_detec.txt", "a");
+    	pFile=fopen(video_name, "a");
     }
 
 	for (i = 0; i < num; ++i) {
@@ -422,21 +422,21 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
 
 #ifdef OPENCV
 
-void draw_detections_cv_v3(IplImage* show_img, detection *dets, int num, float thresh, char **names, image **alphabet, int classes)
+void draw_detections_cv_v3(IplImage* show_img, detection *dets, int num, float thresh, char **names, image **alphabet, int classes, char *filename)
 {
 	int i, j;
 
-	// char video_name[200] = {0};
-	// strcat(video_name,filename);
-	// strcat(video_name,"cv.txt");
+	char video_name[200] = {0};
+	strcat(video_name,filename);
+	strcat(video_name,"cv.txt");
 
 	FILE *pFile;
-	if ((pFile=fopen("yolo_v3_detec_cv.txt", "r"))==NULL){
-        pFile=fopen("yolo_v3_detec_cv.txt", "a");
+	if ((pFile=fopen(video_name, "r"))==NULL){
+        pFile=fopen(video_name, "a");
         fprintf(pFile,"#object, left, right, top, bottom, prob\n");
     }
     else{
-    	pFile=fopen("yolo_v3_detec_cv.txt", "a");
+    	pFile=fopen(video_name, "a");
     }
 	
 	if (!show_img) return;
