@@ -1198,6 +1198,8 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
     double time;
     char buff[256];
     char *input = buff;
+    char buff3[256];
+    char * saveName = buff3;
     int j;
     float nms=.45;	// 0.4F
     while(1){
@@ -1233,7 +1235,9 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
 		int nboxes = 0;
 		detection *dets = get_network_boxes(&net, im.w, im.h, thresh, hier_thresh, 0, 1, &nboxes, letterbox);
 		if (nms) do_nms_sort(dets, nboxes, l.classes, nms);
-		draw_detections_v3(im, dets, nboxes, thresh, names, alphabet, l.classes);
+		strncpy(saveName, input, 256);
+		strcat(saveName, ".txt");
+		draw_detections_v3(im, dets, nboxes, thresh, names, alphabet, l.classes, saveName);
 		free_detections(dets, nboxes);
         save_image(im, "predictions");
 		if (!dont_show) {
