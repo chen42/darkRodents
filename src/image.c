@@ -431,13 +431,8 @@ void draw_detections_cv_v3(IplImage* show_img, detection *dets, int num, float t
 	// strcat(video_name,"cv.txt");
 
 	FILE *pFile;
-	if ((pFile=fopen("yolo_v3_detec_cv.txt", "r"))==NULL){
-        pFile=fopen("yolo_v3_detec_cv.txt", "a");
-        fprintf(pFile,"#object, left, right, top, bottom, prob\n");
-    }
-    else{
-    	pFile=fopen("yolo_v3_detec_cv.txt", "a");
-    }
+    pFile=fopen("yolo_v3_detec_cv.txt", "a");
+    fprintf(pFile,"#object, left, right, top, bottom, prob\n");
 	
 	if (!show_img) return;
 
