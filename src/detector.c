@@ -1047,10 +1047,11 @@ void write_detections(image im, int num, float thresh, box *boxes, float **probs
     FILE *f_img;
     f_img = fopen(save_name, "w");
     fprintf(f_img, "%s\n", save_name);
-    fprintf(f_img,"#object, left, right, top, bottom, prob\n");
+    fprintf(f_img,"#object left right top bottom prob\n");
     for(i = 0; i < num; ++i){
         int class = max_index(probs[i], classes);
         float prob = probs[i][class];
+        int prob_int = prob*100; 
         //write the class only if its prob is greater than zero
         if(prob){
             box b = boxes[i];
@@ -1064,7 +1065,7 @@ void write_detections(image im, int num, float thresh, box *boxes, float **probs
             if(right > im.w-1) right = im.w-1;
             if(top < 0) top = 0;
             if(bot > im.h-1) bot = im.h-1;
-            fprintf(f_img, "%s,%d,%d,%d,%d,%f\n", names[class], left, right, top, bot, prob);
+            fprintf(f_img, "%s %d %d %d %d %d\n", names[class], left, right, top, bot, prob_int);
         }
     }
     fclose(f_img);
@@ -1235,8 +1236,29 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
 		int nboxes = 0;
 		detection *dets = get_network_boxes(&net, im.w, im.h, thresh, hier_thresh, 0, 1, &nboxes, letterbox);
 		if (nms) do_nms_sort(dets, nboxes, l.classes, nms);
-		strncpy(saveName, input, 256);
+		
+        char buff2[256];
+        char * imgName = buff2;
+        strncpy(imgName, input, 256);
+        int imgName_len = strlen(imgName);
+        //extract filename
+        int dir_len = 0;
+        int ext_len = 0;
+        int jj = 0;
+        for(jj = 0; jj < imgName_len; jj++){
+            if(imgName[jj] == '/'){
+                dir_len = jj;
+            }
+            if(imgName[jj] == '.'){
+                ext_len = jj;
+            }
+        }
+        imgName[ext_len] = '\0';
+        imgName += dir_len;
+		
+		strncpy(saveName, imgName, 256);
 		strcat(saveName, ".txt");
+		
 		draw_detections_v3(im, dets, nboxes, thresh, names, alphabet, l.classes, saveName);
 		free_detections(dets, nboxes);
         save_image(im, "predictions");
