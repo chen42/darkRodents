@@ -241,7 +241,7 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
 	FILE *pFile;
 	if ((pFile=fopen("yolo_v3_detec.txt", "r"))==NULL){
         pFile=fopen("yolo_v3_detec.txt", "a");
-        fprintf(pFile,"#object, left, right, top, bottom, prob\n");
+        fprintf(pFile,"#object left right top bottom prob\n");
     }
     else{
     	pFile=fopen("yolo_v3_detec.txt", "a");
@@ -258,15 +258,6 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
 		if (right > im.w - 1) right = im.w - 1;
 		if (top < 0) top = 0;
 		if (bot > im.h - 1) bot = im.h - 1;
-
-		char left_str[100] = { 0 };
-		gcvt(left, 100, left_str);
-		char right_str[100] = { 0 };
-		gcvt(right, 100, right_str);
-		char top_str[100] = { 0 };
-		gcvt(top, 100, top_str);
-		char bot_str[100] = { 0 };
-		gcvt(bot, 100, bot_str);
 		
 		char labelstr[4096] = { 0 };
 		int class_id = -1;
@@ -282,24 +273,9 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
 					strcat(labelstr, names[j]);
 				}
 
-				char outstr[1000] = { 0 };
-				strcat(outstr, names[j]);
-				strcat(outstr, ",");
-				strcat(outstr, left_str);
-				strcat(outstr, ",");
-				strcat(outstr, right_str);
-				strcat(outstr, ",");
-				strcat(outstr, top_str);
-				strcat(outstr, ",");
-				strcat(outstr, bot_str);
-				strcat(outstr, ",");
-				char prob_str[10] = { 0 };
-				gcvt(dets[i].prob[j]*100, 6, prob_str);
-				strcat(outstr, prob_str);
-				strcat(outstr, "\n");
-				
-				fprintf(pFile, "%s", outstr); 
+				int prob_j = dets[i].prob[j]*100;
 
+				fprintf(pFile, "%s %d %d %d %d %d\n", names[j], left, right, top, bot, prob_j);
 				printf("%s: %.0f%%\n", names[j], dets[i].prob[j] * 100);
 			}
 		}
@@ -432,7 +408,7 @@ void draw_detections_cv_v3(IplImage* show_img, detection *dets, int num, float t
 
 	FILE *pFile;
     pFile=fopen("yolo_v3_detec_cv.txt", "a");
-    fprintf(pFile,"#object, left, right, top, bottom, prob\n");
+    fprintf(pFile,"#object left right top bottom prob\n");
 	
 	if (!show_img) return;
 
@@ -449,16 +425,6 @@ void draw_detections_cv_v3(IplImage* show_img, detection *dets, int num, float t
 		if (top < 0) top = 0;
 		if (bot > show_img->height - 1) bot = show_img->height - 1;
 
-		
-		char left_str[100] = { 0 };
-		gcvt(left, 100, left_str);
-		char right_str[100] = { 0 };
-		gcvt(right, 100, right_str);
-		char top_str[100] = { 0 };
-		gcvt(top, 100, top_str);
-		char bot_str[100] = { 0 };
-		gcvt(bot, 100, bot_str);
-
 		char labelstr[4096] = { 0 };
 		int class_id = -1;
 		for (j = 0; j < classes; ++j) {
@@ -472,23 +438,8 @@ void draw_detections_cv_v3(IplImage* show_img, detection *dets, int num, float t
 					strcat(labelstr, names[j]);
 				}
 
-				char outstr[1000] = { 0 };
-				strcat(outstr, names[j]);
-				strcat(outstr, ",");
-				strcat(outstr, left_str);
-				strcat(outstr, ",");
-				strcat(outstr, right_str);
-				strcat(outstr, ",");
-				strcat(outstr, top_str);
-				strcat(outstr, ",");
-				strcat(outstr, bot_str);
-				strcat(outstr, ",");
-				char prob_str[10] = { 0 };
-				gcvt(dets[i].prob[j]*100, 6, prob_str);
-				strcat(outstr, prob_str);
-				strcat(outstr, "\n");
-				
-				fprintf(pFile, "%s", outstr); 
+				int prob_j = dets[i].prob[j]*100;
+				fprintf(pFile, "%s %d %d %d %d %d\n", names[j], left, right, top, bot, prob_j);
 
 				printf("%s: %.0f%%\n", names[j], dets[i].prob[j] * 100);
 			}

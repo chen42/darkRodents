@@ -1047,7 +1047,7 @@ void write_detections(image im, int num, float thresh, box *boxes, float **probs
     FILE *f_img;
     f_img = fopen(save_name, "w");
     fprintf(f_img, "%s\n", save_name);
-
+    fprintf(f_img,"#object, left, right, top, bottom, prob\n");
     for(i = 0; i < num; ++i){
         int class = max_index(probs[i], classes);
         float prob = probs[i][class];
@@ -1064,7 +1064,7 @@ void write_detections(image im, int num, float thresh, box *boxes, float **probs
             if(right > im.w-1) right = im.w-1;
             if(top < 0) top = 0;
             if(bot > im.h-1) bot = im.h-1;
-            fprintf(f_img, "%s %d %d %d %d %f\n", names[class], left, right, top, bot, prob);
+            fprintf(f_img, "%s,%d,%d,%d,%d,%f\n", names[class], left, right, top, bot, prob);
         }
     }
     fclose(f_img);
