@@ -129,9 +129,8 @@ double get_wall_time()
 }
 
 void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int cam_index, const char *filename, char **names, int classes,
-	int frame_skip, char *prefix, char *out_filename, int http_stream_port, int *gpus, int dont_show)
+	int frame_skip, char *prefix, char *out_filename, int http_stream_port, int dont_show)
 {
-    cuda_set_device(gpus);
     //skip = frame_skip;
     image **alphabet = load_alphabet();
     int delay = frame_skip;
@@ -306,7 +305,7 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
 }
 #else
 void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int cam_index, const char *filename, char **names, int classes,
-	int frame_skip, char *prefix, char *out_filename, int http_stream_port, int *gpus, int dont_show)
+	int frame_skip, char *prefix, char *out_filename, int http_stream_port, int dont_show)
 {
     fprintf(stderr, "Demo needs OpenCV for webcam images.\n");
 }
