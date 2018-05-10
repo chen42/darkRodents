@@ -129,9 +129,30 @@ double get_wall_time()
 }
 
 void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int cam_index, const char *filename, char **names, int classes,
-	int frame_skip, char *prefix, char *out_filename, int http_stream_port, int dont_show)
+	int frame_skip, char *prefix, char *out_filename, int http_stream_port,int *gpus, int dont_show)
 {
     //skip = frame_skip;
+    int ngpus = 1; 
+    network *nets = calloc(ngpus, sizeof(network));
+
+    srand(time(0));
+    int seed = rand();
+    int i;
+    for(i = 0; i < ngpus; ++i){
+        srand(seed);
+#ifdef GPU
+        cuda_set_device(gpus[i]);
+#endif
+        nets[i] = parse_network_cfg_custom(cfgfile,1);
+        if(weightfile){
+            load_weights(&nets[i], weightfile);
+        }
+        nets[i].learning_rate *= ngpus;
+    }
+
+    srand(time(0));
+    network net = nets[0];
+
     image **alphabet = load_alphabet();
     int delay = frame_skip;
     demo_names = names;
@@ -139,7 +160,7 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
     demo_classes = classes;
     demo_thresh = thresh;
     printf("Demo\n");
-    net = parse_network_cfg_custom(cfgfile, 1);	// set batch=1
+
     if(weightfile){
         load_weights(&net, weightfile);
     }
@@ -305,7 +326,7 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
 }
 #else
 void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int cam_index, const char *filename, char **names, int classes,
-	int frame_skip, char *prefix, char *out_filename, int http_stream_port, int dont_show)
+	int frame_skip, char *prefix, char *out_filename, int http_stream_port, int *gpus, int dont_show)
 {
     fprintf(stderr, "Demo needs OpenCV for webcam images.\n");
 }
