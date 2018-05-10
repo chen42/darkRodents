@@ -2,9 +2,10 @@
 #include "utils.h"
 #include "blas.h"
 #include "cuda.h"
+
 #include <stdio.h>
 #include <math.h>
-
+#include <stdlib.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -230,13 +231,32 @@ image **load_alphabet()
     return alphabets;
 }
 
-void draw_detections_v3(image im, detection *dets, int num, float thresh, char **names, image **alphabet, int classes)
+void draw_detections_v3(image im, detection *dets, int num, float thresh, char **names, image **alphabet, int classes, char *save_name)
 {
 	int i, j;
+	// char video_name[200] = {0};
+	// strcat(video_name,filename);
+	// strcat(video_name,".txt");
+
+	FILE *pFile;
+    pFile=fopen(save_name, "a");
+    fprintf(pFile,"#object left right top bottom prob\n");
 
 	for (i = 0; i < num; ++i) {
+		box b = dets[i].bbox;
+		int left = (b.x - b.w / 2.)*im.w;
+		int right = (b.x + b.w / 2.)*im.w;
+		int top = (b.y - b.h / 2.)*im.h;
+		int bot = (b.y + b.h / 2.)*im.h;
+
+		if (left < 0) left = 0;
+		if (right > im.w - 1) right = im.w - 1;
+		if (top < 0) top = 0;
+		if (bot > im.h - 1) bot = im.h - 1;
+		
 		char labelstr[4096] = { 0 };
 		int class_id = -1;
+
 		for (j = 0; j < classes; ++j) {
 			if (dets[i].prob[j] > thresh) {
 				if (class_id < 0) {
@@ -247,6 +267,10 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
 					strcat(labelstr, ", ");
 					strcat(labelstr, names[j]);
 				}
+
+				int prob_j = dets[i].prob[j]*100;
+
+				fprintf(pFile, "%s %d %d %d %d %d\n", names[j], left, right, top, bot, prob_j);
 				printf("%s: %.0f%%\n", names[j], dets[i].prob[j] * 100);
 			}
 		}
@@ -274,18 +298,10 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
 			rgb[0] = red;
 			rgb[1] = green;
 			rgb[2] = blue;
-			box b = dets[i].bbox;
+			
 			//printf("%f %f %f %f\n", b.x, b.y, b.w, b.h);
 
-			int left = (b.x - b.w / 2.)*im.w;
-			int right = (b.x + b.w / 2.)*im.w;
-			int top = (b.y - b.h / 2.)*im.h;
-			int bot = (b.y + b.h / 2.)*im.h;
-
-			if (left < 0) left = 0;
-			if (right > im.w - 1) right = im.w - 1;
-			if (top < 0) top = 0;
-			if (bot > im.h - 1) bot = im.h - 1;
+			
 
 			//int b_x_center = (left + right) / 2;
 			//int b_y_center = (top + bot) / 2;
@@ -310,6 +326,7 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
 			}
 		}
 	}
+	fclose(pFile);
 }
 
 void draw_detections(image im, int num, float thresh, box *boxes, float **probs, char **names, image **alphabet, int classes)
@@ -317,6 +334,7 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
     int i;
 
     for(i = 0; i < num; ++i){
+
         int class_id = max_index(probs[i], classes);
         float prob = probs[i][class_id];
         if(prob > thresh){
@@ -378,9 +396,30 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
 void draw_detections_cv_v3(IplImage* show_img, detection *dets, int num, float thresh, char **names, image **alphabet, int classes)
 {
 	int i, j;
+
+	// char video_name[200] = {0};
+	// strcat(video_name,filename);
+	// strcat(video_name,"cv.txt");
+
+	FILE *pFile;
+    pFile=fopen("yolo_v3_video_txt", "a");
+    fprintf(pFile,"#object left right top bottom prob\n");
+	
 	if (!show_img) return;
 
 	for (i = 0; i < num; ++i) {
+		
+		box b = dets[i].bbox;
+		int left = (b.x - b.w / 2.)*show_img->width;
+		int right = (b.x + b.w / 2.)*show_img->width;
+		int top = (b.y - b.h / 2.)*show_img->height;
+		int bot = (b.y + b.h / 2.)*show_img->height;
+
+		if (left < 0) left = 0;
+		if (right > show_img->width - 1) right = show_img->width - 1;
+		if (top < 0) top = 0;
+		if (bot > show_img->height - 1) bot = show_img->height - 1;
+
 		char labelstr[4096] = { 0 };
 		int class_id = -1;
 		for (j = 0; j < classes; ++j) {
@@ -393,6 +432,10 @@ void draw_detections_cv_v3(IplImage* show_img, detection *dets, int num, float t
 					strcat(labelstr, ", ");
 					strcat(labelstr, names[j]);
 				}
+
+				int prob_j = dets[i].prob[j]*100;
+				fprintf(pFile, "%s %d %d %d %d %d\n", names[j], left, right, top, bot, prob_j);
+
 				printf("%s: %.0f%%\n", names[j], dets[i].prob[j] * 100);
 			}
 		}
@@ -418,19 +461,9 @@ void draw_detections_cv_v3(IplImage* show_img, detection *dets, int num, float t
 			rgb[0] = red;
 			rgb[1] = green;
 			rgb[2] = blue;
-			box b = dets[i].bbox;
 			//printf("%f %f %f %f\n", b.x, b.y, b.w, b.h);
 
-			int left = (b.x - b.w / 2.)*show_img->width;
-			int right = (b.x + b.w / 2.)*show_img->width;
-			int top = (b.y - b.h / 2.)*show_img->height;
-			int bot = (b.y + b.h / 2.)*show_img->height;
-
-			if (left < 0) left = 0;
-			if (right > show_img->width - 1) right = show_img->width - 1;
-			if (top < 0) top = 0;
-			if (bot > show_img->height - 1) bot = show_img->height - 1;
-
+			
 			//int b_x_center = (left + right) / 2;
 			//int b_y_center = (top + bot) / 2;
 			//int b_width = right - left;
@@ -465,6 +498,7 @@ void draw_detections_cv_v3(IplImage* show_img, detection *dets, int num, float t
 			cvPutText(show_img, labelstr, pt_text, &font, black_color);
 		}
 	}
+	fclose(pFile);
 }
 
 void draw_detections_cv(IplImage* show_img, int num, float thresh, box *boxes, float **probs, char **names, image **alphabet, int classes)
