@@ -147,7 +147,6 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
         if(weightfile){
             load_weights(&nets[i], weightfile);
         }
-        nets[i].learning_rate *= ngpus;
     }
 
     srand(time(0));
@@ -161,9 +160,6 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
     demo_thresh = thresh;
     printf("Demo\n");
 
-    if(weightfile){
-        load_weights(&net, weightfile);
-    }
     //set_batch_network(&net, 1);
 	fuse_conv_batchnorm(net);
     srand(2222222);
