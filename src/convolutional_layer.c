@@ -397,7 +397,9 @@ convolutional_layer make_convolutional_layer(int batch, int h, int w, int c, int
     l.workspace_size = get_workspace_size(l);
     l.activation = activation;
 
-    fprintf(stderr, "conv  %5d %2d x%2d /%2d  %4d x%4d x%4d   ->  %4d x%4d x%4d\n", n, size, size, stride, w, h, c, l.out_w, l.out_h, l.out_c);
+    //fprintf(stderr, "conv  %5d %2d x%2d /%2d  %4d x%4d x%4d   ->  %4d x%4d x%4d\n", n, size, size, stride, w, h, c, l.out_w, l.out_h, l.out_c);
+	l.bflops = (2.0 * l.n * l.size*l.size*l.c * l.out_h*l.out_w) / 1000000000.;
+	fprintf(stderr, "conv  %5d %2d x%2d /%2d  %4d x%4d x%4d   ->  %4d x%4d x%4d %5.3f BF\n", n, size, size, stride, w, h, c, l.out_w, l.out_h, l.out_c, l.bflops);
 
     return l;
 }
@@ -491,7 +493,7 @@ void resize_convolutional_layer(convolutional_layer *l, int w, int h)
 	size_t total_byte;
 	check_error(cudaMemGetInfo(&free_byte, &total_byte));
 	if (l->workspace_size > free_byte || l->workspace_size >= total_byte / 2) {
-		printf(" used slow CUDNN algo without Workspace! \n");
+		printf(" used slow CUDNN algo without Workspace! Need memory: %d, available: %d\n", l->workspace_size, (free_byte < total_byte/2) ? free_byte : total_byte/2);
 		cudnn_convolutional_setup(l, cudnn_smallest);
 		l->workspace_size = get_workspace_size(*l);
 	}
