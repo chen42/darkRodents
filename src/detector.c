@@ -1055,7 +1055,7 @@ void write_detections(image im, int num, float thresh, box *boxes, float **probs
     int i;
     FILE *f_img;
     f_img = fopen(save_name, "w");
-    fprintf(f_img, "%s\n", save_name);
+    //fprintf(f_img, "%s\n", save_name);
     fprintf(f_img,"#object left right top bottom prob\n");
     for(i = 0; i < num; ++i){
         int class = max_index(probs[i], classes);
@@ -1094,7 +1094,8 @@ void test_detector_file(char *datacfg, char *cfgfile, char *weightfile, char *fi
     set_batch_network(&net, 1);
     srand(2222222);
     clock_t time;
-    
+    char buff[256];
+   	char *input = buff;
     int j;
     float nms=.4;
 
@@ -1109,17 +1110,13 @@ void test_detector_file(char *datacfg, char *cfgfile, char *weightfile, char *fi
     
     for(i = 0; i < m; ++i){
         //char *path = paths[i];
-        char buff[256];
-   		char *input = buff;
+        
         strncpy(input, paths[i], 256);
         
         
         image im = load_image_color(input,0,0);
         image sized = resize_image(im, net.w, net.h);
-        //image sized = resize_image(im, net.w, net.h);
-        //image sized2 = resize_max(im, net.w);
-        //image sized = crop_image(sized2, -((net.w - sized2.w)/2), -((net.h - sized2.h)/2), net.w, net.h);
-        //resize_network(&net, sized.w, sized.h);
+
         layer l = net.layers[net.n-1];
 
         box *boxes = calloc(l.w*l.h*l.n, sizeof(box));
@@ -1145,7 +1142,7 @@ void test_detector_file(char *datacfg, char *cfgfile, char *weightfile, char *fi
             char buff3[256];
             char * imgName = buff2;
             char * saveName = buff3;
-            //strncpy(saveName, outfile, 256);
+            strncpy(saveName, outfile, 256);
             strncpy(imgName, input, 256);
             int imgName_len = strlen(imgName);
             //extract filename
