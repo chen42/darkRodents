@@ -66,6 +66,11 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
     srand(time(0));
     network net = nets[0];
 
+	if ((net.batch * net.subdivisions) == 1) {
+		printf("\n Error: You set incorrect value batch=1 for Training! You should set batch=64 subdivision=64 \n");
+		getchar();
+	}
+
     int imgs = net.batch * net.subdivisions * ngpus;
     printf("Learning Rate: %g, Momentum: %g, Decay: %g\n", net.learning_rate, net.momentum, net.decay);
     data train, buffer;
@@ -121,12 +126,8 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
     while(get_current_batch(net) < net.max_batches){
 		if(l.random && count++%10 == 0){
             printf("Resizing\n");
-			int dim = (rand() % 12 + (init_w/32 - 5)) * 32;	// +-160
-            //if (get_current_batch(net)+100 > net.max_batches) dim = 544;
+			//int dim = (rand() % 12 + (init_w/32 - 5)) * 32;	// +-160
             //int dim = (rand() % 4 + 16) * 32;
-            printf("%d\n", dim);
-            args.w = dim;
-            args.h = dim;
 
             pthread_join(load_thread, 0);
             train = buffer;
@@ -134,7 +135,7 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
             load_thread = load_data(args);
 
             for(i = 0; i < ngpus; ++i){
-                resize_network(nets + i, dim, dim);
+                resize_network(nets + i, dim_w, dim_h);
             }
             net = nets[0];
         }
