@@ -231,50 +231,79 @@ image **load_alphabet()
     return alphabets;
 }
 
-void draw_detections_v3(image im, detection *dets, int num, float thresh, char **names, image **alphabet, int classes, char *save_name)
+
+// Creates array of detections with prob > thresh and fills best_class for them
+detection_with_class* get_actual_detections(detection *dets, int dets_num, float thresh, int* selected_detections_num)
 {
-	int i, j;
-	// char video_name[200] = {0};
-	// strcat(video_name,filename);
-	// strcat(video_name,".txt");
-
-	FILE *pFile;
-    pFile=fopen(save_name, "a");
-    fprintf(pFile,"#object left right top bottom prob\n");
-
-	for (i = 0; i < num; ++i) {
-		box b = dets[i].bbox;
-		int left = (b.x - b.w / 2.)*im.w;
-		int right = (b.x + b.w / 2.)*im.w;
-		int top = (b.y - b.h / 2.)*im.h;
-		int bot = (b.y + b.h / 2.)*im.h;
-
-		if (left < 0) left = 0;
-		if (right > im.w - 1) right = im.w - 1;
-		if (top < 0) top = 0;
-		if (bot > im.h - 1) bot = im.h - 1;
-		
-		char labelstr[4096] = { 0 };
-		int class_id = -1;
-
-		for (j = 0; j < classes; ++j) {
-			if (dets[i].prob[j] > thresh) {
-				if (class_id < 0) {
-					strcat(labelstr, names[j]);
-					class_id = j;
-				}
-				else {
-					strcat(labelstr, ", ");
-					strcat(labelstr, names[j]);
-				}
-
-				int prob_j = dets[i].prob[j]*100;
-
-				fprintf(pFile, "%s %d %d %d %d %d\n", names[j], left, right, top, bot, prob_j);
-				printf("%s: %.0f%%\n", names[j], dets[i].prob[j] * 100);
+	int selected_num = 0;
+	detection_with_class* result_arr = calloc(dets_num, sizeof(detection_with_class));
+	int i;
+	for (i = 0; i < dets_num; ++i) {
+		int best_class = -1;
+		float best_class_prob = thresh;
+		int j;
+		for (j = 0; j < dets[i].classes; ++j) {
+			if (dets[i].prob[j] > best_class_prob ) {
+				best_class = j;
+				best_class_prob = dets[i].prob[j];
 			}
 		}
-		if (class_id >= 0) {
+		if (best_class >= 0) {
+			result_arr[selected_num].det = dets[i];
+			result_arr[selected_num].best_class = best_class;
+			++selected_num;
+		}
+	}
+	if (selected_detections_num)
+		*selected_detections_num = selected_num;
+	return result_arr;
+}
+
+// compare to sort detection** by bbox.x
+int compare_by_lefts(const void *a_ptr, const void *b_ptr) {
+	const detection_with_class* a = (detection_with_class*)a_ptr;
+	const detection_with_class* b = (detection_with_class*)b_ptr;
+	const float delta = (a->det.bbox.x - a->det.bbox.w/2) - (b->det.bbox.x - b->det.bbox.w/2);
+	return delta < 0 ? -1 : delta > 0 ? 1 : 0;
+}
+
+// compare to sort detection** by best_class probability 
+int compare_by_probs(const void *a_ptr, const void *b_ptr) {
+	const detection_with_class* a = (detection_with_class*)a_ptr;
+	const detection_with_class* b = (detection_with_class*)b_ptr;
+	float delta = a->det.prob[a->best_class] - b->det.prob[b->best_class];
+	return delta < 0 ? -1 : delta > 0 ? 1 : 0;
+}
+
+void draw_detections_v3(image im, detection *dets, int num, float thresh, char **names, image **alphabet, int classes, int ext_output)
+{
+	int selected_detections_num;
+	detection_with_class* selected_detections = get_actual_detections(dets, num, thresh, &selected_detections_num);
+
+	// text output
+	qsort(selected_detections, selected_detections_num, sizeof(*selected_detections), compare_by_lefts);
+	int i;
+	for (i = 0; i < selected_detections_num; ++i) {
+		const int best_class = selected_detections[i].best_class;
+		printf("%s: %.0f%%", names[best_class],	selected_detections[i].det.prob[best_class] * 100);
+		if (ext_output)
+			printf("\t(left: %.0f \ttop: %.0f \tw: %0.f \th: %0.f)\n",
+				(selected_detections[i].det.bbox.x - selected_detections[i].det.bbox.w / 2)*im.w,
+				(selected_detections[i].det.bbox.y - selected_detections[i].det.bbox.h / 2)*im.h,
+				selected_detections[i].det.bbox.w*im.w, selected_detections[i].det.bbox.h*im.h);
+		else
+			printf("\n");
+		int j;
+		for (j = 0; j < classes; ++j) {
+			if (selected_detections[i].det.prob[j] > thresh && j != best_class) {
+				printf("%s: %.0f%%\n", names[j], selected_detections[i].det.prob[j] * 100);
+			}
+		}
+	}
+
+	// image output
+	qsort(selected_detections, selected_detections_num, sizeof(*selected_detections), compare_by_probs);
+	for (i = 0; i < selected_detections_num; ++i) {
 			int width = im.h * .006;
 			if (width < 1)
 				width = 1;
@@ -286,8 +315,8 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
 			}
 			*/
 
-			//printf("%d %s: %.0f%%\n", i, names[class_id], prob*100);
-			int offset = class_id * 123457 % classes;
+			//printf("%d %s: %.0f%%\n", i, names[selected_detections[i].best_class], prob*100);
+			int offset = selected_detections[i].best_class * 123457 % classes;
 			float red = get_color(2, offset, classes);
 			float green = get_color(1, offset, classes);
 			float blue = get_color(0, offset, classes);
@@ -298,10 +327,18 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
 			rgb[0] = red;
 			rgb[1] = green;
 			rgb[2] = blue;
-			
+			box b = selected_detections[i].det.bbox;
 			//printf("%f %f %f %f\n", b.x, b.y, b.w, b.h);
 
-			
+			int left = (b.x - b.w / 2.)*im.w;
+			int right = (b.x + b.w / 2.)*im.w;
+			int top = (b.y - b.h / 2.)*im.h;
+			int bot = (b.y + b.h / 2.)*im.h;
+
+			if (left < 0) left = 0;
+			if (right > im.w - 1) right = im.w - 1;
+			if (top < 0) top = 0;
+			if (bot > im.h - 1) bot = im.h - 1;
 
 			//int b_x_center = (left + right) / 2;
 			//int b_y_center = (top + bot) / 2;
@@ -311,12 +348,21 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
 
 			draw_box_width(im, left, top, right, bot, width, red, green, blue);
 			if (alphabet) {
+				char labelstr[4096] = { 0 };
+				strcat(labelstr, names[selected_detections[i].best_class]);
+				int j;
+				for (j = 0; j < classes; ++j) {
+					if (selected_detections[i].det.prob[j] > thresh && j != selected_detections[i].best_class) {
+						strcat(labelstr, ", ");
+						strcat(labelstr, names[j]);
+					}
+				}
 				image label = get_label_v3(alphabet, labelstr, (im.h*.03));
 				draw_label(im, top + width, left, label, rgb);
 				free_image(label);
 			}
-			if (dets[i].mask) {
-				image mask = float_to_image(14, 14, 1, dets[i].mask);
+			if (selected_detections[i].det.mask) {
+				image mask = float_to_image(14, 14, 1, selected_detections[i].det.mask);
 				image resized_mask = resize_image(mask, b.w*im.w, b.h*im.h);
 				image tmask = threshold_image(resized_mask, .5);
 				embed_image(tmask, im, left, top);
@@ -324,9 +370,8 @@ void draw_detections_v3(image im, detection *dets, int num, float thresh, char *
 				free_image(resized_mask);
 				free_image(tmask);
 			}
-		}
 	}
-	fclose(pFile);
+	free(selected_detections);
 }
 
 void draw_detections(image im, int num, float thresh, box *boxes, float **probs, char **names, image **alphabet, int classes)
@@ -922,7 +967,7 @@ image load_image_cv(char *filename, int channels)
         sprintf(buff, "echo %s >> bad.list", filename);
         system(buff);
         return make_image(10,10,3);
-        //exit(0);
+        //exit(EXIT_FAILURE);
     }
     image out = ipl_to_image(src);
     cvReleaseImage(&src);
@@ -1663,7 +1708,11 @@ image load_image_stb(char *filename, int channels)
     unsigned char *data = stbi_load(filename, &w, &h, &c, channels);
     if (!data) {
         fprintf(stderr, "Cannot load image \"%s\"\nSTB Reason: %s\n", filename, stbi_failure_reason());
-        exit(0);
+		char buff[256];
+		sprintf(buff, "echo %s >> bad.list", filename);
+		system(buff);
+		return make_image(10, 10, 3);
+        //exit(EXIT_FAILURE);
     }
     if(channels) c = channels;
     int i,j,k;
