@@ -1094,8 +1094,7 @@ void test_detector_file(char *datacfg, char *cfgfile, char *weightfile, char *fi
     set_batch_network(&net, 1);
     srand(2222222);
     clock_t time;
-    char buff[256];
-    char *input = buff;
+    
     int j;
     float nms=.4;
 
@@ -1110,6 +1109,8 @@ void test_detector_file(char *datacfg, char *cfgfile, char *weightfile, char *fi
     
     for(i = 0; i < m; ++i){
         //char *path = paths[i];
+        char buff[256];
+   		char *input = buff;
         strncpy(input, paths[i], 256);
         
         
