@@ -128,6 +128,14 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
             printf("Resizing\n");
 			//int dim = (rand() % 12 + (init_w/32 - 5)) * 32;	// +-160
             //int dim = (rand() % 4 + 16) * 32;
+			//if (get_current_batch(net)+100 > net.max_batches) dim = 544;
+			int random_val = rand() % 12;
+			int dim_w = (random_val + (init_w / 32 - 5)) * 32;	// +-160
+			int dim_h = (random_val + (init_h / 32 - 5)) * 32;	// +-160
+
+			printf("%d x %d \n", dim_w, dim_h);
+			args.w = dim_w;
+			args.h = dim_h;
 
             pthread_join(load_thread, 0);
             train = buffer;
