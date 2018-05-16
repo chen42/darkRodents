@@ -66,11 +66,6 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
     srand(time(0));
     network net = nets[0];
 
-	if ((net.batch * net.subdivisions) == 1) {
-		printf("\n Error: You set incorrect value batch=1 for Training! You should set batch=64 subdivision=64 \n");
-		getchar();
-	}
-
     int imgs = net.batch * net.subdivisions * ngpus;
     printf("Learning Rate: %g, Momentum: %g, Decay: %g\n", net.learning_rate, net.momentum, net.decay);
     data train, buffer;
@@ -126,16 +121,12 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
     while(get_current_batch(net) < net.max_batches){
 		if(l.random && count++%10 == 0){
             printf("Resizing\n");
-			//int dim = (rand() % 12 + (init_w/32 - 5)) * 32;	// +-160
+			int dim = (rand() % 12 + (init_w/32 - 5)) * 32;	// +-160
+            //if (get_current_batch(net)+100 > net.max_batches) dim = 544;
             //int dim = (rand() % 4 + 16) * 32;
-			//if (get_current_batch(net)+100 > net.max_batches) dim = 544;
-			int random_val = rand() % 12;
-			int dim_w = (random_val + (init_w / 32 - 5)) * 32;	// +-160
-			int dim_h = (random_val + (init_h / 32 - 5)) * 32;	// +-160
-
-			printf("%d x %d \n", dim_w, dim_h);
-			args.w = dim_w;
-			args.h = dim_h;
+            printf("%d\n", dim);
+            args.w = dim;
+            args.h = dim;
 
             pthread_join(load_thread, 0);
             train = buffer;
@@ -143,7 +134,7 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
             load_thread = load_data(args);
 
             for(i = 0; i < ngpus; ++i){
-                resize_network(nets + i, dim_w, dim_h);
+                resize_network(nets + i, dim, dim);
             }
             net = nets[0];
         }
@@ -195,7 +186,7 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
 
 		//if (i % 1000 == 0 || (i < 1000 && i % 100 == 0)) {
 		//if (i % 100 == 0) {
-		if(i >= (iter_save + 1000)) {
+		if(i >= (iter_save + 100)) {
 			iter_save = i;
 #ifdef GPU
 			if (ngpus != 1) sync_nets(nets, ngpus, 0);
@@ -1055,7 +1046,7 @@ void write_detections(image im, int num, float thresh, box *boxes, float **probs
     int i;
     FILE *f_img;
     f_img = fopen(save_name, "w");
-    //fprintf(f_img, "%s\n", save_name);
+    fprintf(f_img, "%s\n", save_name);
     fprintf(f_img,"#object left right top bottom prob\n");
     for(i = 0; i < num; ++i){
         int class = max_index(probs[i], classes);
@@ -1079,8 +1070,8 @@ void write_detections(image im, int num, float thresh, box *boxes, float **probs
     }
     fclose(f_img);
 }
-
-void test_detector_file(char *datacfg, char *cfgfile, char *weightfile, char *filelistname, float thresh, char *outfile)
+///revised//////
+void test_detector_file(char *datacfg, char *cfgfile, char *weightfile, char *filelistname, float thresh, float hier_thresh, char *outfile)
 {
     list *options = read_data_cfg(datacfg);
     char *name_list = option_find_str(options, "names", "data/names.list");
@@ -1095,7 +1086,7 @@ void test_detector_file(char *datacfg, char *cfgfile, char *weightfile, char *fi
     srand(2222222);
     clock_t time;
     char buff[256];
-   	char *input = buff;
+    char *input = buff;
     int j;
     float nms=.4;
 
@@ -1110,18 +1101,20 @@ void test_detector_file(char *datacfg, char *cfgfile, char *weightfile, char *fi
     
     for(i = 0; i < m; ++i){
         //char *path = paths[i];
-        
         strncpy(input, paths[i], 256);
         
-        
+        int letterbox = 0;
         image im = load_image_color(input,0,0);
-        image sized = resize_image(im, net.w, net.h);
-
+        image sized = resize_image(im, net.w, net.h);letterbox = 1;
+        //image sized = resize_image(im, net.w, net.h);
+        //image sized2 = resize_max(im, net.w);
+        //image sized = crop_image(sized2, -((net.w - sized2.w)/2), -((net.h - sized2.h)/2), net.w, net.h);
+        //resize_network(&net, sized.w, sized.h);
         layer l = net.layers[net.n-1];
 
-        box *boxes = calloc(l.w*l.h*l.n, sizeof(box));
-        float **probs = calloc(l.w*l.h*l.n, sizeof(float *));
-        for(j = 0; j < l.w*l.h*l.n; ++j) probs[j] = calloc(l.classes + 1, sizeof(float *));
+        //box *boxes = calloc(l.w*l.h*l.n, sizeof(box));
+        //float **probs = calloc(l.w*l.h*l.n, sizeof(float *));
+        //for(j = 0; j < l.w*l.h*l.n; ++j) probs[j] = calloc(l.classes + 1, sizeof(float *));
 
         float *X = sized.data;
         time=clock();
@@ -1129,20 +1122,17 @@ void test_detector_file(char *datacfg, char *cfgfile, char *weightfile, char *fi
         printf("%s: Predicted in %f seconds.\n", input, sec(clock()-time));
         //get_region_boxes(l, im.w, im.h, net.w, net.h, thresh, probs, boxes, 0, 0, hier_thresh, 1);
         //get_region_boxes(l, w, h, thresh, probs, boxes, 0, map);
-        get_region_boxes(l, 1, 1, thresh, probs, boxes, 0, 0);
+        //get_region_boxes(l, 1, 1, thresh, probs, boxes, 0, 0);
         //if (nms) do_nms_obj(boxes, probs, l.w*l.h*l.n, l.classes, nms);
-        if (nms) do_nms_sort_v2(boxes, probs, l.w*l.h*l.n, l.classes, nms);
-        draw_detections(im, l.w*l.h*l.n, thresh, boxes, probs, names, alphabet, l.classes);
-        // if output directory is specified then save the images
-        // Example command
-        // ./darknet detector test_file cfg/combine9k.data cfg/yolo9000.cfg data/yolo9000.weights imgs_v/imagelist.txt -thresh 0.01 -outdir img_out_cmu
-        if(outfile){
-            //TODO mimic draw detection and annotations to txt file
-            char buff2[256];
+        int nboxes = 0;
+        detection *dets = get_network_boxes(&net, im.w, im.h, thresh, hier_thresh, 0, 1, &nboxes, letterbox);
+		if (nms) do_nms_sort(dets, nboxes, l.classes, nms);
+		
+		char buff2[256];
             char buff3[256];
             char * imgName = buff2;
             char * saveName = buff3;
-            strncpy(saveName, outfile, 256);
+            //strncpy(saveName, outfile, 256);
             strncpy(imgName, input, 256);
             int imgName_len = strlen(imgName);
             //extract filename
@@ -1161,11 +1151,21 @@ void test_detector_file(char *datacfg, char *cfgfile, char *weightfile, char *fi
             imgName += dir_len;
             //concatenate and give to save_image
             strcat(saveName, imgName);
+            strcat(saveName, ".txt");
+
+        draw_detections_v3(im, dets, nboxes, thresh, names, alphabet, l.classes, saveName);
+		free_detections(dets, nboxes);
+        //if (nms) do_nms_sort_v2(boxes, probs, l.w*l.h*l.n, l.classes, nms);
+        //draw_detections(im, l.w*l.h*l.n, thresh, boxes, probs, names, alphabet, l.classes);
+        // if output directory is specified then save the images
+        // Example command
+        // ./darknet detector test_file cfg/combine9k.data cfg/yolo9000.cfg data/yolo9000.weights imgs_v/imagelist.txt -thresh 0.01 -outdir img_out_cmu
+        if(outfile){
+            //TODO mimic draw detection and annotations to txt file
             printf("saving as: %s \n", saveName); 
             save_image(im, saveName);
             //write detections to txt file
-            strcat(saveName, ".txt");
-            write_detections(im, l.w*l.h*l.n, thresh, boxes, probs, names, alphabet, l.classes, saveName);
+            //write_detections(im, l.w*l.h*l.n, thresh, boxes, probs, names, alphabet, l.classes, saveName);
         }
         else{
             save_image(im, "predictions");
@@ -1175,15 +1175,15 @@ void test_detector_file(char *datacfg, char *cfgfile, char *weightfile, char *fi
                 cvSetWindowProperty("predictions", CV_WND_PROP_FULLSCREEN, CV_WINDOW_FULLSCREEN);
             }*/
            // show_image(im, "predictions");
-            //cvWaitKey(0);
-            //cvDestroyAllWindows();
+           // cvWaitKey(0);
+           // cvDestroyAllWindows();
 #endif
         }
 
         free_image(im);
         free_image(sized);
-        free(boxes);
-        free_ptrs((void **)probs, l.w*l.h*l.n);
+        //free(boxes);
+       //free_ptrs((void **)probs, l.w*l.h*l.n);
         //if (filename) break;
         printf("\n");
     }
@@ -1356,7 +1356,7 @@ void run_detector(int argc, char **argv)
 			if (weights[strlen(weights) - 1] == 0x0d) weights[strlen(weights) - 1] = 0;
     char *filename = (argc > 6) ? argv[6]: 0;
     if(0==strcmp(argv[2], "test")) test_detector(datacfg, cfg, weights, filename, thresh, hier_thresh, dont_show);
-    else if(0==strcmp(argv[2], "test_file")) test_detector_file(datacfg, cfg, weights, filename, thresh, outdir);//Using this option
+    else if(0==strcmp(argv[2], "test_file")) test_detector_file(datacfg, cfg, weights, filename, thresh, hier_thresh, outdir);//Using this option
     else if(0==strcmp(argv[2], "train")) train_detector(datacfg, cfg, weights, gpus, ngpus, clear, dont_show);
     else if(0==strcmp(argv[2], "valid")) validate_detector(datacfg, cfg, weights, outfile);
     else if(0==strcmp(argv[2], "recall")) validate_detector_recall(datacfg, cfg, weights);
