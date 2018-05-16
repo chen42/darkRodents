@@ -1106,67 +1106,49 @@ void test_detector_file(char *datacfg, char *cfgfile, char *weightfile, char *fi
         int letterbox = 0;
         image im = load_image_color(input,0,0);
         image sized = resize_image(im, net.w, net.h);letterbox = 1;
-        //image sized = resize_image(im, net.w, net.h);
-        //image sized2 = resize_max(im, net.w);
-        //image sized = crop_image(sized2, -((net.w - sized2.w)/2), -((net.h - sized2.h)/2), net.w, net.h);
-        //resize_network(&net, sized.w, sized.h);
-        layer l = net.layers[net.n-1];
 
-        //box *boxes = calloc(l.w*l.h*l.n, sizeof(box));
-        //float **probs = calloc(l.w*l.h*l.n, sizeof(float *));
-        //for(j = 0; j < l.w*l.h*l.n; ++j) probs[j] = calloc(l.classes + 1, sizeof(float *));
+        layer l = net.layers[net.n-1];
 
         float *X = sized.data;
         time=clock();
         network_predict(net, X);
         printf("%s: Predicted in %f seconds.\n", input, sec(clock()-time));
-        //get_region_boxes(l, im.w, im.h, net.w, net.h, thresh, probs, boxes, 0, 0, hier_thresh, 1);
-        //get_region_boxes(l, w, h, thresh, probs, boxes, 0, map);
-        //get_region_boxes(l, 1, 1, thresh, probs, boxes, 0, 0);
-        //if (nms) do_nms_obj(boxes, probs, l.w*l.h*l.n, l.classes, nms);
+        
         int nboxes = 0;
         detection *dets = get_network_boxes(&net, im.w, im.h, thresh, hier_thresh, 0, 1, &nboxes, letterbox);
 		if (nms) do_nms_sort(dets, nboxes, l.classes, nms);
 		
 		char buff2[256];
-            char buff3[256];
-            char * imgName = buff2;
-            char * saveName = buff3;
-            //strncpy(saveName, outfile, 256);
-            strncpy(imgName, input, 256);
-            int imgName_len = strlen(imgName);
-            //extract filename
-            int dir_len = 0;
-            int ext_len = 0;
-            int jj = 0;
-            for(jj = 0; jj < imgName_len; jj++){
-                if(imgName[jj] == '/'){
-                    dir_len = jj;
-                }
-                if(imgName[jj] == '.'){
-                    ext_len = jj;
-                }
+        char buff3[256];
+        char * imgName = buff2;
+        char * saveName = buff3;
+        strncpy(saveName, outfile, 256);
+        strncpy(imgName, input, 256);
+        int imgName_len = strlen(imgName);
+        //extract filename
+        int dir_len = 0;
+        int ext_len = 0;
+        int jj = 0;
+        for(jj = 0; jj < imgName_len; jj++){
+            if(imgName[jj] == '/'){
+                dir_len = jj;
             }
-            imgName[ext_len] = '\0';
-            imgName += dir_len;
-            //concatenate and give to save_image
-            strcat(saveName, imgName);
-            strcat(saveName, ".txt");
-
-        draw_detections_v3(im, dets, nboxes, thresh, names, alphabet, l.classes, saveName);
-		free_detections(dets, nboxes);
-        //if (nms) do_nms_sort_v2(boxes, probs, l.w*l.h*l.n, l.classes, nms);
-        //draw_detections(im, l.w*l.h*l.n, thresh, boxes, probs, names, alphabet, l.classes);
-        // if output directory is specified then save the images
-        // Example command
-        // ./darknet detector test_file cfg/combine9k.data cfg/yolo9000.cfg data/yolo9000.weights imgs_v/imagelist.txt -thresh 0.01 -outdir img_out_cmu
-        if(outfile){
-            //TODO mimic draw detection and annotations to txt file
-            printf("saving as: %s \n", saveName); 
-            save_image(im, saveName);
-            //write detections to txt file
-            //write_detections(im, l.w*l.h*l.n, thresh, boxes, probs, names, alphabet, l.classes, saveName);
+            if(imgName[jj] == '.'){
+                ext_len = jj;
+            }
         }
+        imgName[ext_len] = '\0';
+        imgName += dir_len;
+        //concatenate and give to save_image
+        strcat(saveName, imgName);
+        strcat(saveName, ".txt");
+        printf("saving as: %s \n", saveName); 
+        draw_detections_v3(im, dets, nboxes, thresh, names, alphabet, l.classes, saveName);
+		
+              if(outfile){
+            //TODO mimic draw detection and annotations to txt file
+            
+            save_image(im, saveName);        }
         else{
             save_image(im, "predictions");
 #ifdef OPENCV
@@ -1179,7 +1161,7 @@ void test_detector_file(char *datacfg, char *cfgfile, char *weightfile, char *fi
            // cvDestroyAllWindows();
 #endif
         }
-
+        free_detections(dets, nboxes);
         free_image(im);
         free_image(sized);
         //free(boxes);
